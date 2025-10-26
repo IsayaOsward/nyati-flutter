@@ -1,7 +1,7 @@
 name: nyati
 description: A CLI tool to create Flutter projects with a custom folder structure.
 version: 1.0.0
-# repository: https://github.com/IsayaOsward/project_setup.git
+repository: https://github.com/IsayaOsward/nyati-flutter.git
 
 executables:
   nyati: nyati
