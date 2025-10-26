@@ -1,102 +1,68 @@
 import 'dart:io';
+import 'package:path/path.dart' as p;
 
-Future<void> main(List<String> args) async {
-  if (args.isEmpty) {
+void main(List<String> arguments) {
+  if (arguments.isEmpty) {
     print('🦬 Usage: nyati <project_name>');
-    exit(1);
+    return;
   }
 
-  final projectName = args.first;
-  final templateRepo = 'https://github.com/IsayaOsward/project_setup.git';
-  final tempDir = Directory('.nyati_temp');
+  final projectName = arguments[0];
+  final projectPath = p.join(Directory.current.path, projectName);
 
   print('🚀 Creating Flutter project: $projectName ...');
-  final createResult = await Process.run('flutter', ['create', projectName]);
 
-  stdout.write(createResult.stdout);
-  stderr.write(createResult.stderr);
+  // Step 1: Run flutter create
+  final result = Process.runSync('flutter', [
+    'create',
+    projectName,
+  ], runInShell: true);
+  stdout.write(result.stdout);
+  stderr.write(result.stderr);
 
-  if (createResult.exitCode != 0) {
-    print('❌ Failed to create Flutter project.');
-    exit(1);
-  }
+  // Step 2: Copy template files into new project
+  final templatePath = p.join(
+    Directory.current.path,
+    'template',
+  ); // Adjust path if needed
+  copyTemplate(templatePath, projectPath);
 
-  print('📦 Cloning Nyati template...');
-  if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
-  final cloneResult = await Process.run('git', [
-    'clone',
-    '--depth',
-    '1',
-    templateRepo,
-    tempDir.path,
-  ]);
-
-  stdout.write(cloneResult.stdout);
-  stderr.write(cloneResult.stderr);
-
-  if (cloneResult.exitCode != 0) {
-    print('❌ Failed to clone template repository.');
-    exit(1);
-  }
-
-  // Specify what to copy from the template
-  final itemsToCopy = ['lib', 'assets', 'l10n.yaml'];
-
-  print('📂 Copying selected folders/files...');
-  for (final item in itemsToCopy) {
-    final source = Directory('${tempDir.path}/$item');
-    final target = Directory('$projectName/$item');
-
-    if (source.existsSync()) {
-      await _copyDirectory(source, target);
-      print('  ✅ Copied: $item');
-    } else if (File('${tempDir.path}/$item').existsSync()) {
-      // handle single files like l10n.yaml
-      final sourceFile = File('${tempDir.path}/$item');
-      final targetFile = File('$projectName/$item');
-      await targetFile.create(recursive: true);
-      await sourceFile.copy(targetFile.path);
-      print('  ✅ Copied file: $item');
-    } else {
-      print('  ⚠️  Skipped missing: $item');
-    }
-  }
-
-  // Cleanup temp directory
-  tempDir.deleteSync(recursive: true);
-
-  print('📦 Running flutter pub get...');
-  final pubGet = await Process.run('flutter', [
-    'pub',
-    'get',
-  ], workingDirectory: projectName);
-  stdout.write(pubGet.stdout);
-  stderr.write(pubGet.stderr);
-
-  print(
-    '\n✅ ${projectName.toUpperCase()} created successfully using Nyati template!',
-  );
+  print('✅ $projectName created successfully using Nyati template!');
   print('📁 Navigate: cd $projectName');
   print('🚀 Run: flutter run');
 }
 
-Future<void> _copyDirectory(Directory source, Directory destination) async {
-  if (!destination.existsSync()) {
-    destination.createSync(recursive: true);
+void copyTemplate(String templatePath, String projectPath) {
+  final templateDir = Directory(templatePath);
+  final projectDir = Directory(projectPath);
+
+  if (!templateDir.existsSync()) {
+    print('❌ Template folder does not exist at $templatePath');
+    return;
   }
 
-  await for (var entity in source.list(recursive: false)) {
-    if (entity is Directory) {
-      final newDir = Directory(
-        '${destination.path}/${entity.uri.pathSegments.last}',
-      );
-      await _copyDirectory(entity, newDir);
-    } else if (entity is File) {
-      final newFile = File(
-        '${destination.path}/${entity.uri.pathSegments.last}',
-      );
-      await newFile.create(recursive: true);
-      await entity.copy(newFile.path);
+  if (!projectDir.existsSync()) {
+    projectDir.createSync(recursive: true);
+  }
+
+  for (var entity in templateDir.listSync(recursive: true)) {
+    final relativePath = p.relative(entity.path, from: templatePath);
+    final newPath = p.join(projectPath, relativePath);
+
+    if (entity is File) {
+      File(newPath)
+        ..createSync(recursive: true)
+        ..writeAsBytesSync(entity.readAsBytesSync());
+      print('✅ Copied file: $relativePath');
+    } else if (entity is Directory) {
+      Directory(newPath).createSync(recursive: true);
+      print('✅ Created folder: $relativePath');
     }
   }
+
+  // Ensure assets folder exists with subfolders
+  final assetsPath = p.join(projectPath, 'assets');
+  Directory(p.join(assetsPath, 'images')).createSync(recursive: true);
+  Directory(p.join(assetsPath, 'svg')).createSync(recursive: true);
+  print('📂 Created assets/images and assets/svg folders');
 }
