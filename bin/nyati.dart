@@ -59,7 +59,7 @@ Future<void> createFlutterProject({
     'clone',
     '--depth',
     '1',
-    'https://github.com/IsayaOsward/project_setup.git',
+    'https://github.com/IsayaOsward/FLUTTER-TEMPLATE.git',
     tempDir.path,
   ];
 

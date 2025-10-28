@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.5
+
+- Changed template source location
+
 ## 1.0.4
 
 - Restructured the logic of copying files/folders from the template.
